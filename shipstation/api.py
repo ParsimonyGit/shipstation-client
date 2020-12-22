@@ -34,13 +34,13 @@ class ShipStation(ShipStationHTTP):
         responses = []  # refactor to generator
         for order in orders:
             r = self.post(endpoint="/orders/createorder", data=order.json())
-            responses.append(ShipStationOrder().json(r.text, parse_float=Decimal))
+            responses.append(ShipStationOrder().json(r.json(parse_float=Decimal)))
         return responses
 
     def create_order(self, order: ShipStationOrder) -> ShipStationOrder:
         self.require_type(order, ShipStationOrder)
         r = self.post(endpoint="/orders/createorder", data=order.json())
-        return ShipStationOrder().json(r.text, parse_float=Decimal)
+        return ShipStationOrder().json(r.json(parse_float=Decimal))
 
     # refactor
     def list_orders(self, parameters: typing.Dict[str, typing.Any] = {}) -> Page:
@@ -62,7 +62,7 @@ class ShipStation(ShipStationHTTP):
 
     def get_order(self, order_id: str) -> typing.Union[str, ShipStationBase, None]:
         r = self.get(endpoint=f"/orders/{order_id}")
-        return ShipStationOrder().json(r.text)
+        return ShipStationOrder().json(r.json(parse_float=Decimal))
 
     def delete_order(self, order_id: str) -> typing.Any:
         msg = self.delete(endpoint=f"/orders/{order_id}")
@@ -148,12 +148,16 @@ class ShipStation(ShipStationHTTP):
 
     def get_product(self, product_id: str) -> typing.Union[str, ShipStationBase, None]:
         r = self.get(endpoint=f"/products/{product_id}")
-        return ShipStationItem().json(r.text)
+        return ShipStationItem().json(r.text) #TODO: switch to parse float and test deserialization
 
-    def list_products(self) -> Page:
+    def list_products(self, parameters: typing.Dict[str, typing.Any] = {}) -> Page:
+        valid_parameters = self._validate_parameters(
+            parameters, PRODUCT_LIST_PARAMETERS
+        )
         return Page(
             type=ShipStationItem,
             key="products",
+            params=valid_parameters,
             call=(self.get, {"endpoint": "/products"}),
         )
 
@@ -212,7 +216,8 @@ class ShipStation(ShipStationHTTP):
         return Page(
             type=ShipStationCustomer,
             key="customers",
-            call=(self.get, {"endpoint": "/customers", "payload": valid_parameters}),
+            params=valid_parameters,
+            call=(self.get, {"endpoint": "/customers"}),
         )
 
     def list_fulfillments(self, parameters: typing.Any = {}) -> Page:
@@ -222,7 +227,8 @@ class ShipStation(ShipStationHTTP):
         return Page(
             type=ShipStationFulfillment,
             key="fulfillments",
-            call=(self.get, {"endpoint": "/fulfillments", "payload": valid_parameters}),
+            params=valid_parameters,
+            call=(self.get, {"endpoint": "/fulfillments"}),
         )
 
     def list_shipments(self, parameters: typing.Any = {}) -> Page:
@@ -232,7 +238,8 @@ class ShipStation(ShipStationHTTP):
         return Page(
             type=ShipStationOrder,
             key="shipments",
-            call=(self.get, {"endpoint": "/shipments", "payload": valid_parameters}),
+            params=valid_parameters,
+            call=(self.get, {"endpoint": "/shipments"}),
         )
 
     # TODO: return shipment label as objects
